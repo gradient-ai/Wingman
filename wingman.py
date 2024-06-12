@@ -15,8 +15,8 @@ import PIL
 
 local_path = 'mistral_models/Codestral-22B-v0.1'
 
-# tokenizer_code = MistralTokenizer.v3()
-# model_code = Transformer.from_folder(local_path)
+tokenizer_code = MistralTokenizer.v3()
+model_code = Transformer.from_folder(local_path)
 print('Loaded Codestral...')
 
 # model_id = "MaziyarPanahi/Phi-3-mini-4k-instruct-v0.3"
