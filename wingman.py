@@ -15,8 +15,8 @@ import PIL
 
 local_path = 'mistral_models/Codestral-22B-v0.1'
 
-tokenizer_code = MistralTokenizer.v3()
-model_code = Transformer.from_folder(local_path)
+# tokenizer_code = MistralTokenizer.v3()
+# model_code = Transformer.from_folder(local_path)
 print('Loaded Codestral...')
 
 # model_id = "MaziyarPanahi/Phi-3-mini-4k-instruct-v0.3"
@@ -114,21 +114,30 @@ with gr.Blocks() as demo:
                     image = PIL.Image.open(x)
                     # print(type(image))
                     chat_history.append(((x,), None))
-                thread = Thread(target=pipe(image, prompt=message['text'], generate_kwargs={"max_new_tokens": 200, "streamer":streamer,"eos_token_id": terminators}))
+                thread = Thread(target=pipe(image, prompt=message['text'], generate_kwargs={"max_new_tokens": 200, "streamer":streamer}))
                 thread.start()
                 generated_text = ""
                 count = 0
             else:
+                messages = [
+                    {"role": "system", "content": "You are a helpful coding assistant who always responds with detailed assistance"},
+                    {"role": "user", "content": message['text']},
+                        ]
+                terminators = [
+                    tokenizer_chat.eos_token_id, # this should be <|im_end|>
+                    tokenizer_chat.convert_tokens_to_ids("<|assistant|>"), # sometimes model stops generating at <|assistant|>
+                    tokenizer_chat.convert_tokens_to_ids("<|end|>") # sometimes model stops generating at <|end|>
+                ]
                 model_id = "MaziyarPanahi/Phi-3-mini-4k-instruct-v0.3"
                 pipe = pipeline("text-generation", model=model_id, device=0)
-                thread = Thread(target=pipe(text_inputs=message['text'], max_new_tokens= 200, streamer=streamer,eos_token_id=terminators))
+                thread = Thread(target=pipe(text_inputs=messages, max_new_tokens= 200, streamer=streamer,eos_token_id=terminators))
                 thread.start()
                 generated_text = ""
                 count = 0
             
             for new_text in streamer:
                 if count == 0:
-                    generated_text = generated_text.strip('<s><image>').rstrip('<|end|>').lstrip(message['text'])
+                    generated_text = generated_text.strip('<s><image>').rstrip('<|end|>').lstrip(message['text']).lstrip('<|end|>').rstrip('<|end|>')
                     generated_text += new_text
                     print(generated_text)
                     chat_history.append((message['text'], "".join(generated_text.split('assistant')[-1])))
@@ -139,12 +148,12 @@ with gr.Blocks() as demo:
                     del chat_history[-1]
                     generated_text += new_text
                     if "|>" != "".join(generated_text.split('assistant')[-1]):
-                        generated_text = generated_text.strip('<s><image>').rstrip('<|end|>').lstrip(message['text'])
+                        generated_text = generated_text.strip('<s><image>').rstrip('<|end|>').lstrip(message['text']).lstrip('<|end|>').rstrip('<|end|>')
                         chat_history.append((message['text'], "".join(generated_text.split('assistant')[-1])))
                         time.sleep(.05)
                         yield empty, chat_history, ''
                     else:
-                        break
+                        pass
             
         
     
